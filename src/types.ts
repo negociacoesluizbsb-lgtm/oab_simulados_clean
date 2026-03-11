@@ -4,5 +4,9 @@ export interface Questao {
   pergunta: string;
   alternativas: Record<string, string>;
   correta: string;
-  dificuldade?: string;
+}
+
+export interface UserSession {
+  email: string;
+  subscribed: boolean;
 }
