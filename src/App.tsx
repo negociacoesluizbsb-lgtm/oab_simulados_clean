@@ -4,6 +4,7 @@ import { BookOpen } from 'lucide-react';
 import type { Questao, UserSession } from './types';
 import HomePage from './pages/HomePage';
 import QuestionCard from './components/QuestionCard';
+import embeddedQuestoes from './data/questoes.json';
 
 const PRICE = 'R$ 39,90/mês';
 const FREE_TOTAL_LIMIT = 2;
@@ -62,7 +63,7 @@ export default function App() {
   const [, nav] = useLocation();
   const [questoes, setQuestoes] = useState<Questao[]>([]);
   const [session, setSession] = useState<UserSession | null>(readJson('session', null));
-  useEffect(() => { fetch('/api/questoes').then(r => r.json()).then(setQuestoes).catch(()=>setQuestoes([])); }, []);
+  useEffect(() => { setQuestoes((embeddedQuestoes as Questao[]) || []); }, []);
   const sorted = useMemo(()=>questoes.slice(0, 2000), [questoes]);
   function activate() { const next = session ? { ...session, subscribed: true } : null; if (next) { writeJson('session', next); setSession(next); } }
   function logout() { localStorage.removeItem('session'); setSession(null); }
