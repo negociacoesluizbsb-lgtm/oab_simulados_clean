@@ -62,7 +62,7 @@ export default function App() {
   const [, nav] = useLocation();
   const [questoes, setQuestoes] = useState<Questao[]>([]);
   const [session, setSession] = useState<UserSession | null>(readJson('session', null));
-  useEffect(() => { fetch('/questoes.json').then(r => r.json()).then(setQuestoes).catch(()=>setQuestoes([])); }, []);
+  useEffect(() => { fetch('/api/questoes').then(r => r.json()).then(setQuestoes).catch(()=>setQuestoes([])); }, []);
   const sorted = useMemo(()=>questoes.slice(0, 2000), [questoes]);
   function activate() { const next = session ? { ...session, subscribed: true } : null; if (next) { writeJson('session', next); setSession(next); } }
   function logout() { localStorage.removeItem('session'); setSession(null); }
