@@ -14,8 +14,11 @@ function Topbar({ session, onLogout }: { session: UserSession | null; onLogout: 
   return <header className='topbar'><div className='container navwrap'><Link href='/' className='brand'><span className='logo'><BookOpen size={22} /></span><span><strong>OAB Simulados</strong><small>Plataforma de estudos para o Exame da Ordem</small></span></Link><nav>{session ? <><span className='email'>{session.email}</span><Link href='/app' className='navbtn outline'>Área</Link><button className='navbtn outline' onClick={onLogout}>Sair</button></> : <><Link href='/login' className='navbtn outline'>Login</Link><Link href='/checkout' className='navbtn'>Assinar</Link></>}</nav></div></header>;
 }
 
-function Home({ total }: { total: number }) {
-  return <div className='home-shell'><section className='container hero'><div className='hero-center'><h1>Prepare-se para o Exame da OAB</h1><p>Acesse questões, simulados e acompanhe sua evolução com uma experiência visual parecida com a base original.</p></div><div className='stats'><div className='stat card'><div className='staticon blue'><BookOpen size={24} /></div><div><p>Total de Questões</p><strong>{total || 2000}</strong></div></div><div className='stat card'><div className='staticon indigo'><Target size={24} /></div><div><p>Acesso grátis</p><strong>2 questões</strong></div></div><div className='stat card'><div className='staticon green'><Zap size={24} /></div><div><p>Simulado demo</p><strong>1 questão</strong></div></div></div><div className='hero-actions'><Link href='/simulado' className='cta primary'><Zap size={18}/>Fazer Simulado</Link><Link href='/app' className='cta secondary'>Treinar questões</Link><Link href='/checkout' className='cta secondary'>Assinar {PRICE}</Link></div></section></div>;
+function Home({ total, questoes }: { total: number; questoes: Questao[] }) {
+  const [, nav] = useLocation();
+  const disciplinas = Array.from(new Set(questoes.map(q => q.disciplina))).sort();
+  const counts = disciplinas.reduce((acc, d) => ({ ...acc, [d]: questoes.filter(q => q.disciplina === d).length }), {} as Record<string, number>);
+  return <div className='home-shell'><section className='container hero'><div className='hero-center'><h1>Prepare-se para o Exame da OAB</h1><p>Acesse questões, simulados e acompanhe sua evolução com uma experiência visual parecida com a base original.</p></div><div className='stats'><div className='stat card'><div className='staticon blue'><BookOpen size={24} /></div><div><p>Total de Questões</p><strong>{total || 2000}</strong></div></div><div className='stat card'><div className='staticon indigo'><Target size={24} /></div><div><p>Acesso grátis</p><strong>2 questões</strong></div></div><div className='stat card'><div className='staticon green'><Zap size={24} /></div><div><p>Simulado demo</p><strong>1 questão</strong></div></div></div><div className='hero-actions'><Link href='/simulado' className='cta primary'><Zap size={18}/>Fazer Simulado</Link><Link href='/app' className='cta secondary'>Treinar questões</Link><Link href='/checkout' className='cta secondary'>Assinar {PRICE}</Link></div><div className='disciplines'>{disciplinas.map(d => <button key={d} className='discipline card' onClick={() => { sessionStorage.setItem('selected_disciplina', d); nav('/app'); }}><strong>{d}</strong><span>{counts[d]} questões</span></button>)}</div></section></div>;
 }
 
 function Login({ onLogin }: { onLogin: (s: UserSession) => void }) {
@@ -44,14 +47,16 @@ function QuestionView({ question, selected, checked, setSelected, submit, next, 
 function AppArea({ questoes, session, onActivate }: { questoes: Questao[]; session: UserSession | null; onActivate: () => void }) {
   const [, nav] = useLocation();
   const freeUsed = readJson<number>('free_used_total', 0);
+  const selectedDisciplina = sessionStorage.getItem('selected_disciplina') || '';
+  const filtered = selectedDisciplina ? questoes.filter(q => q.disciplina === selectedDisciplina) : questoes;
   const [current, setCurrent] = useState(0); const [selected, setSelected] = useState<string | null>(null); const [checked, setChecked] = useState(false);
   const isPremium = !!session?.subscribed;
   const canUseQuestion = isPremium || freeUsed < FREE_TOTAL_LIMIT;
-  const question = questoes[current];
+  const question = filtered[current];
   if (!session) { nav('/login'); return null; }
   function submit() { if (!selected) return; setChecked(true); if (!isPremium && freeUsed < FREE_TOTAL_LIMIT) writeJson('free_used_total', freeUsed + 1); }
-  function next() { setCurrent((v)=>Math.min(v+1, questoes.length-1)); setSelected(null); setChecked(false); }
-  return <div className='page'><div className='sectionhead'><div><h1>Questões</h1><p>Grátis usadas: {Math.min(freeUsed, FREE_TOTAL_LIMIT)}/{FREE_TOTAL_LIMIT}</p></div><div className='headactions'><Link href='/simulado' className='navbtn outline'>Simulado</Link><button className='navbtn outline' onClick={onActivate}>Simular premium</button></div></div>{canUseQuestion ? <QuestionView question={question} selected={selected} checked={checked} setSelected={setSelected} submit={submit} next={next} isLast={current === questoes.length - 1} /> : <div className='card paywall'><h3>Limite grátis atingido</h3><p>Você já usou as 2 questões grátis totais.</p><button className='cta primary' onClick={()=>nav('/checkout')}>Assinar {PRICE}</button></div>}</div>;
+  function next() { setCurrent((v)=>Math.min(v+1, filtered.length-1)); setSelected(null); setChecked(false); }
+  return <div className='page'><div className='sectionhead'><div><h1>{selectedDisciplina || 'Questões'}</h1><p>Grátis usadas: {Math.min(freeUsed, FREE_TOTAL_LIMIT)}/{FREE_TOTAL_LIMIT}</p></div><div className='headactions'><Link href='/simulado' className='navbtn outline'>Simulado</Link><button className='navbtn outline' onClick={onActivate}>Simular premium</button></div></div>{question ? (canUseQuestion ? <QuestionView question={question} selected={selected} checked={checked} setSelected={setSelected} submit={submit} next={next} isLast={current === filtered.length - 1} /> : <div className='card paywall'><h3>Limite grátis atingido</h3><p>Você já usou as 2 questões grátis totais.</p><button className='cta primary' onClick={()=>nav('/checkout')}>Assinar {PRICE}</button></div>) : <div className='card'><h3>Sem questões</h3><p>Selecione uma matéria na página inicial para treinar por disciplina.</p></div>}</div>;
 }
 
 function Simulado({ questoes, session }: { questoes: Questao[]; session: UserSession | null }) {
@@ -70,5 +75,5 @@ export default function App() {
   const sorted = useMemo(()=>questoes.slice(0, 2000), [questoes]);
   function activate() { const next = session ? { ...session, subscribed: true } : null; if (next) { writeJson('session', next); setSession(next); } }
   function logout() { localStorage.removeItem('session'); setSession(null); }
-  return <><Topbar session={session} onLogout={logout} /><Switch><Route path='/'><Home total={sorted.length} /></Route><Route path='/login'><Login onLogin={setSession} /></Route><Route path='/checkout'><Checkout session={session} onActivate={activate} /></Route><Route path='/app'><AppArea questoes={sorted} session={session} onActivate={activate} /></Route><Route path='/simulado'><Simulado questoes={sorted} session={session} /></Route></Switch><footer className='footer'>© 2026 OAB Simulados.</footer></>;
+  return <><Topbar session={session} onLogout={logout} /><Switch><Route path='/'><Home total={sorted.length} questoes={sorted} /></Route><Route path='/login'><Login onLogin={setSession} /></Route><Route path='/checkout'><Checkout session={session} onActivate={activate} /></Route><Route path='/app'><AppArea questoes={sorted} session={session} onActivate={activate} /></Route><Route path='/simulado'><Simulado questoes={sorted} session={session} /></Route></Switch><footer className='footer'>© 2026 OAB Simulados.</footer></>;
 }
